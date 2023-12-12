@@ -2,20 +2,46 @@
 #include "WaveModel.h"
 
 //нахождение волнового пакета в следующий момент времени
-void WaveModel::FindWave() {
-	InitData();
-	
-	
+void WaveModel::Start() {
+	/*curE = GetError();
+	Solve();
+	CopyData();*/
+	while (err <= curE)
+	{
+		curE = GetError();
+		Solve();
+		CopyData();
+	}	
 }
 
 //начальная инициализация алгоритма
 void WaveModel::InitData() {
+	//рассчет координат для обкладок
+	double
+		y1l = -height / 2,			//левый нижний угол для левой обкладки		
+		x1l = -D / 2 - width,
+		y2l = y1l,					//правый нижний угол для левой обкладки
+		x2l = -D / 2,
+		y3l = height / 2,			//правый верхний угол для левой обкладки
+		x3l = x2l,
+		y4l = y3l,					//левый верхний угол для левой обкладки
+		x4l = x1l,
+		y1r = y1l,					//левый нижний угол для правой бокладки
+		x1r = D / 2,
+		y2r = y1l,					//правый нижний угол для правой обкладки 
+		x2r = D / 2 + width,
+		y3r = y3l,					//правый верхний угол для правой обкладки
+		x3r = x2r,
+		y4r = y3l,					//левый верхний угол для правой обкладки
+		x4r = x1r;
+
 
 	//создание массивов
 	X = new double[N];
 	Y = new double[M];
-	Fpast = new double*[N];
+	Fpast = new double* [N];
 	Fnow = new double* [N];
+	MapOfModel = new int* [N];
 
 	//инициализация простраственной стеки
 	stepX = 2 * R / N;
@@ -23,9 +49,9 @@ void WaveModel::InitData() {
 	double
 		x0 = -R;
 
-	for (int i = 0; i < N; i++) 
+	for (int i = 0; i < N; i++)
 		X[i] = x0 + i * stepX;
-	 
+
 	for (int i = 0; i < M; i++)
 		Y[i] = x0 + i * stepY;
 
@@ -33,10 +59,35 @@ void WaveModel::InitData() {
 	for (int i = 0; i < N; i++) {
 		Fpast[i] = new double[M];
 		Fnow[i] = new double[M];
-
-		for (int j = 0; j < M; j++) {		
-			Fpast[i][j] = 1;
-			Fnow[i][j] = 0;
+		MapOfModel[i] = new int[M];
+		
+		for (int j = 0; j < M; j++) {
+			
+			//для границы
+			if ((i == 0) || (j == 0) || (i == N - 1) || (j == M - 1)) {
+				MapOfModel[i][j] = BOARDS;
+				Fpast[i][j] = 0;
+				Fnow[i][j] = 0;
+			}
+			//для левой обкладки
+			else if ((X[i] >= x1l) && (X[i] <= x2l) && (Y[j] >= y1l) && (Y[j] <= y3l)) {
+				MapOfModel[i][j] = LFACING;
+				Fpast[i][j] = -phi0;
+				Fnow[i][j] = -phi0;
+			}
+				
+			//для правой границы
+			else if ((X[i] >= x1r) && (X[i] <= x2r) && (Y[j] >= y1r) && (Y[j] <= y3r)){
+				MapOfModel[i][j] = RFACING;
+				Fpast[i][j] = phi0;
+				Fnow[i][j] = phi0;
+			}
+			//для остального пространства
+			else {
+				MapOfModel[i][j] = FIELD;
+				Fpast[i][j] = 0;
+				Fnow[i][j] = 0;
+			}						
 		}
 	}
 
@@ -57,39 +108,31 @@ void WaveModel::CopyData() {
 
 //находит новое приближение
 void WaveModel::Solve() {
-	for(int i = 1; i < N - 1; i++)
-		for (int j = 1; j < M - 1; j++) {
-
-		}
+	for (int i = 0; i < N; i++) {
+		for (int j = 0; j < M; j++) {
+			if (MapOfModel[i][j] == FIELD)
+				Fnow[i][j] = Fpast[i][j] + GetR(i, j) / e;
+			/*else
+				Fnow[i][j] = Fpast[i][j];*/
+		}			
+	}			
 }
 
 //апдейтит параметры модели
-void WaveModel::Update(int N, int M,  double dt, double R, double a, double b, double U0, double f0, double asrx, double asry, double gammax, double gammay) {
+void WaveModel::Update(int N, int M, double D, double height, double width, double phi0, double R, double err) {
 	this->N = N;
-	this->M = M;
-	this->dt = dt;
+	this->M = M;	
 	this->R = R;
-	this->a = a;
-	this->b = b;
-	this->U0 = U0;
-	this->f0 = f0;
-	this->aSrx = asrx;
-	this->aSry = asry;
-	this->gammax = gammax;
-	this->gammay = gammay;
-	//this->SFId = N / 2;
+	this->D = D;
+	this->height = height;
+	this->width = width;
+	this->phi0 = phi0;
+	this->err = err;
 }
-
-
 
 //Отдает указатель на F
-complex<double>** WaveModel::GetF() {
+double** WaveModel::GetF() {
 	return Fpast;
-}
-
-//Отдает указатель на FFur
-complex<double>*** WaveModel::GetFFur() {
-	return FBuf;
 }
 
 //отдает указатель на X
@@ -102,31 +145,26 @@ double* WaveModel::GetY() {
 	return Y;
 }
 
-//отдает указатель на f
-double* WaveModel::Getf() {
-	return f;
-}
-
 //сбрасывает настройки
 void WaveModel::Reset()
-{
-	if ((Fpast != NULL)) {
-		delete [] X;
-		delete [] A;
-		delete [] B;
-		delete [] C;
-		delete [] D;
-		delete [] alpha;
-		delete [] betta;
+{	
+	if (X != NULL) {
+		for (int i = 0; i < N; i++) {
+			delete[] Fpast[i];
+			delete[] Fnow[i];
+			delete[] MapOfModel[i];
+		}
 
-		/*for (int i = 0; i < IdMax; i++)
-			delete [] F[i];
-		for (int i = 0; i < N; i++)
-			delete [] FFur[i];
+		delete[] X;
+		delete[] Y;
+		delete[] Fpast;
+		delete[] Fnow;
+		delete[] MapOfModel;
 
-		delete [] F;
-		delete [] FFur;
-		Id = 1;
-		Energes.clear();*/
+		X = NULL;
+		Y = NULL;
+		Fpast = NULL;
+		Fnow = NULL;
+		MapOfModel = NULL;
 	}	
 }

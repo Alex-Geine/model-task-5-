@@ -1,18 +1,14 @@
 #pragma once
 #include <iostream>
-#include <complex>
 #include <vector>
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#define Pi 3.1415926535
-#define  NUMBER_IS_2_POW_K(x)   ((!((x)&((x)-1)))&&((x)>1))  // x is pow(2, k), k=1,2, ...
-#define  FT_DIRECT        -1    // Direct transform.
-#define  FT_INVERSE        1    // Inverse transform.
 
-#define FIRSTHALF		1
-#define SECONDHALF		0
-
+#define BOARDS		400
+#define LFACING		401
+#define RFACING		402
+#define FIELD		403
 
 using namespace std;
 
@@ -24,14 +20,14 @@ private:
 	int M;		//количество точек по оси y
 
 	double
-		d,			//расстояние межу обкладками
+		D,			//расстояние межу обкладками
 		height,		//высота обкладок
 		width,		//ширина обкладок
 		phi0,		//потенциал на обкладках
 		stepX,		//шаг по пространству оси X
 		stepY,		//шаг по пространству оси Y
 		R,			//размер поля для моделирования
-		e;			//допустимая погрешность
+		err;			//допустимая погрешность
 
 	//DATA
 	
@@ -39,6 +35,7 @@ private:
 	double** Fpast = NULL;		//распределение потенциала на предыдущем шаге
 	double* X = NULL;			//значения по X
 	double* Y = NULL;			//значения по Y
+	int **MapOfModel = NULL;			//в массиве будут идентификаторы каждой клетки поля
 
 	//KOEF
 	
@@ -51,40 +48,38 @@ private:
 		e;
 
 
-	//начальная инициализация алгоритма
-	void InitData();
+	
 
 	//находит невязку
 	double GetR(int i, int j) {
 		return -(a * Fpast[i - 1][j] + b * Fpast[i + 1][j] + c * Fpast[i][j - 1] + d * Fpast[i][j + 1] + e * Fpast[i][j]);
 	}
 
+	//находит среднюю ошибку
+	double GetError() {
+		double res = 0;
+		for (int i = 1; i < N - 1; i++)
+			for (int j = 1; j < M - 1; j++)
+				if(MapOfModel[i][j] == FIELD)
+					res += GetR(i, j) * GetR(i,j);
+
+		return sqrt(res);
+	}
+
 	//находит новое приближение
 	void Solve();
 
 	//копирует отсчеты функции на текущем шаге в буфер для предыдущего шага
-	void CopyData();
+	void CopyData();	
 public:
+	//начальная инициализация алгоритма
+	void InitData();
+
 	//текущая погрешность
 	double curE = 10;
 
-	//флаг, отвечающий за готовность произвести фурье
-	bool DataReady = false;
-
-	//флаг, отвечающий за начало рассчета фурье
-	bool FurStart = false;
-
-	//функция, которая добавляет в буфер новый отсчет времени
-	bool PutData();
-
 	//Отдает указатель на F()
-	complex<double>** GetF();
-
-	//Отдает указатель на FFur()
-	complex<double>*** GetFFur();
-
-	//Отдает указатель на вектор с энергиями
-	vector<pair<double, int>> GetEnerges();
+	double** GetF();
 
 	//сбрасывает настройки
 	void Reset();
@@ -95,18 +90,9 @@ public:
 	//отдает указатель на Y
 	double* GetY();
 
-	//отдает указатель на f
-	double* Getf();
-
-	//нахождение волнового пакета в следующий момент времени
-	void FindWave();
-
-	//нахождение собственных функций частицы
-	void FindFunc();
-
 	//апдейтит параметры модели
-	void Update(int N, int M, double dt, double R, double a, double b, double U0, double f0, double asrx, double asry, double gammax, double gammay);
+	void Update(int N, int M, double D, double height, double width, double phi0, double R, double err);
 
-	//находит собственные функции в конкретном 
-	void FindSF(int id);
+	//запускает вычисления
+	void Start();
 };

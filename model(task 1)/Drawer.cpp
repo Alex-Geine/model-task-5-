@@ -29,11 +29,7 @@ void Drawer::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {	
 	if (draw) {
 		if (drawerID == 1)
-			control->DrawMainGr(lpDrawItemStruct);
-		if (drawerID == 2)
-			control->Draw3D(lpDrawItemStruct);
-		if(drawerID == 3)
-			control->DrawSpectrum(lpDrawItemStruct);
+			control->DrawMainGr(lpDrawItemStruct);		
 	}	
 	
 }

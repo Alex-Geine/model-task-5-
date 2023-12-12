@@ -2,7 +2,6 @@
 
 #include <gdiplus.h>
 #include <vector>
-#include <complex>
 #include "WaveModel.h"
 #include "math3d.h"
 
@@ -21,10 +20,8 @@ struct Poligon
 class Controller {	
 private:	
 	ULONG_PTR token;
-	WaveModel* mod;
+	WaveModel* mod = nullptr;
 	HANDLE TREAD;
-	CRITICAL_SECTION cs;
-	mat4 mat; // конечная матрица преобразования
 
 	struct ColorTable {
 	public:
@@ -38,13 +35,13 @@ private:
 		double *mas;
 
 		ColorTable(double max) {
-			double step = max / (Size - 1);
+			double step = (2 * max) / (Size - 1);
 
 			mas = new double[Size];
 			brashes = new SolidBrush*[Size - 1];
 			
 			for (int i = 0; i < Size; i++) 
-				mas[i] = i * step;	
+				mas[i] = -max + i * step;	
 
 			for (int i = 0; i < Size - 1; i++) {
 				Color col(255 *  i / (Size - 1), 0, 255 - 255 * i / (Size - 1));
@@ -55,61 +52,42 @@ private:
 		//возвращает указатель на кисть из нужного диапазона
 		SolidBrush* GetBrush(double val) {
 			for (int i = 0; i < Size - 1; i++) {
-				if ((val >= mas[i]) && (val < mas[i + 1]))
-					return brashes[i];
+				if ((val >= mas[i]) && (val <= mas[i + 1]))
+					return brashes[i];				
 			}
+			return new SolidBrush(Color::Black);
 		}
 	};
 
 	
 
-	double	R;		//ширина ямы
-	double dt;		//шаг по времени
+	double	R;				//ширина ямы
+	int N;					//количество точек по X
+	int M;					//количество точек по Y
 
-	int N;				//количество точек по X
-	int M;				//количество точек по Y
-	int IdMax = 1024;	//количество отсчетов времени
+	double MaxF;			//максимальное значение на графике 	
+	double MinF;			//минимальное значение на графике
 
-	double MaxF;		//максимальное значение на графике пакета
-	double MaxY;		//маскимальное значение по оси Y для пакета
-
-	double MaxFFur;		//максимальное значение на графике спектра
-	double MaxE;		//максимальное значение на графике собственной функции
-	double a;			//левая граница ямы
-	double b;			//правая граница ямы
-	double f0;			//амплитуда Гауссого купола
-
-	complex<double>** F = NULL;				//массив значений волнового пакета
-	complex<double>*** FFur = NULL;			//массив значений спектра
-	vector <pair<double, int>> Energes;		//вектор со значениями собственных значений
-
+	double** F = NULL;		//массив значений распределения потенциалов
 	double* X = NULL;		//вектор значений по X
 	double* Y = NULL;		//вектор значений по Y
-	double* f = NULL;		//вектор значений по f
 
 	//вектор со всеми полигонами
 	vector<Poligon*> polig;
+
+	vector <pair<PointF, PointF>> Isolines[11];		//массив с изолиниями
 
 	//флаг, отвечающий за создание вектора с полигонами
 	bool poligReady = false;
 
 	//подготавливает данные для отрисовки 2d
-	void PrepareData2d();
+	void PrepareData2d();	
 
-	//подготавливает данные для отрисовки 3d
-	void PrepareData3d();
+	//находит изолинии
+	void MakeIsolines();
 
-	//очищает список
-	void ClearList();
-
-	//заполняет список
-	void FillList();
-
-	//находит максимальное значения функции фурье
-	void FindMaxFFur();
-
-	//находит максимальное значение собственной функции
-	void FindMaxEn();	
+	//проверяет полигон для поиска изолинии
+	bool CheckPoligon(double T, pair<PointF, PointF>& buf, Poligon pol);
 
 	//функция, которая работает в потоке с моделью
 	DWORD WINAPI ModelFunk();
@@ -117,77 +95,49 @@ private:
 	static DWORD WINAPI StaticModelFunk(PVOID param) {
 		Controller* This = (Controller*)param;
 		return This->ModelFunk();
-	}
-
-	//функция, которая считает фурье
-	DWORD WINAPI ModelFurie();
-
-	static DWORD WINAPI StaticModelFurie(PVOID param) {
-		Controller* This = (Controller*)param;
-		return This->ModelFurie();
-	}
+	}	
 	
-public:
-	CListBox* listEnerges;		//указатель на листбокс
-
-	int drawId = 0;		//ид отсчета времени, в который рисуем пакет
-	int drawIdFx = 0;	//ид спектра, который рисуем
-	int drawIdFy = 0;	//ид спектра, который рисуем
-	int drawIdE = 0;	//ид собственной функции, которую рисуем
-		
+public:	
 	void UpdateModel(
-			int n,			//количество точек по оси X
-			int M,			//количество точек по оси Y
-			double dt,		//шаг по времени
-			double a,		//граница ямы по X
-			double b,		//граница ямы по Y
-			double R,		//бесконечность
-			double f0,		//амплитуда купола
-			double U0,		//высота ямы
-			double gammax,	//дисперсия ямы по оси X
-			double gammay,	//дисперсия ямы по оси Y
-			double asrx,	//среднее отклонение по оси X
-			double asrty	//среднее отклонение по оси Y
+		int N,				//количество точек по оси x
+		int M,				//количество точек по оси y
+		double	D,			//расстояние межу обкладками
+		double height,		//высота обкладок
+		double width,		//ширина обкладок
+		double phi0,		//потенциал на обкладках		
+		double R,			//размер поля для моделирования
+		double err			//допустимая погрешность
 	);
 		
 	//очищает данные
 	void Clear();
 	
 	//запускает отрисовку 2d графика
-	void DrawMainGr(LPDRAWITEMSTRUCT Item1);
-
-	//отрисовывает 3d график
-	void Draw3D(LPDRAWITEMSTRUCT Item1);
-
-	//отрисовывает спектр
-	void DrawSpectrum(LPDRAWITEMSTRUCT Item1);
+	void DrawMainGr(LPDRAWITEMSTRUCT Item1);	
 	
 	//запусткает вычисления
 	void StartSolve();	
 
-	Controller():mod(new WaveModel) {
+	Controller() {
 		GdiplusStartupInput si;
-		GdiplusStartup(&token, &si, NULL);
-		mat.rotateY(1);
+		GdiplusStartup(&token, &si, NULL);	
 	}
 
 	//деструктор
 	~Controller() {
 		GdiplusShutdown(token);
 	}	
-
-	//показвает текущий айтем в листе
-	void ShowItemList();
 	
 	//забирает данные из модели
-	void GetData();
+	void GetData();	
 
-	//отвечает, есть ли данные для отрисовки
-	bool DataReady();
+	//получает значение ошибки из модли
+	double GetError() {
+		return mod->curE;
+	}
 
-	//считает собственные функции по другому отсчеты координаты
-	void GetSF(int id);
-
-	//функция, ждущая отсчетов для фурье
-	void CheckData();
+	//создает новую модель
+	void InitModel() {
+		mod = new WaveModel();
+	}
 };
