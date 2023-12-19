@@ -47,9 +47,6 @@ private:
 		d,
 		e;
 
-
-	
-
 	//находит невязку
 	double GetR(int i, int j) {
 		return -(a * Fpast[i - 1][j] + b * Fpast[i + 1][j] + c * Fpast[i][j - 1] + d * Fpast[i][j + 1] + e * Fpast[i][j]);
@@ -89,6 +86,9 @@ public:
 
 	//отдает указатель на Y
 	double* GetY();
+
+	//отдает указатель на мап
+	int** GetMap();
 
 	//апдейтит параметры модели
 	void Update(int N, int M, double D, double height, double width, double phi0, double R, double err);

@@ -111,10 +111,7 @@ void WaveModel::Solve() {
 	for (int i = 0; i < N; i++) {
 		for (int j = 0; j < M; j++) {
 			if (MapOfModel[i][j] == FIELD)
-				Fnow[i][j] = (Fnow[i+1][j] + Fnow[i-1][j] + Fnow[i][j+1] + Fnow[i][j-1]) / 4.0;
-				//Fnow[i][j] =  GetR(i, j) / e;
-			/*else
-				Fnow[i][j] = Fpast[i][j];*/
+				Fnow[i][j] = (Fnow[i+1][j] + Fnow[i-1][j] + Fnow[i][j+1] + Fnow[i][j-1]) / 4.0;				
 		}			
 	}			
 }
@@ -144,6 +141,11 @@ double* WaveModel::GetX() {
 //отдает указатель на Y
 double* WaveModel::GetY() {
 	return Y;
+}
+
+//отдает указатель на мап
+int** WaveModel::GetMap() {
+	return MapOfModel;
 }
 
 //сбрасывает настройки

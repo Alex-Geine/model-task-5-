@@ -18,7 +18,8 @@ DWORD WINAPI Controller::ModelFunk() {
 void Controller::GetData() {
 	F = mod->GetF();	
 	X = mod->GetX();
-	Y = mod->GetY();	
+	Y = mod->GetY();
+	MapOfModel = mod->GetMap();
 }
 
 //запусткает вычисления
@@ -32,6 +33,7 @@ void Controller::StartSolve() {
 void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 	PrepareData2d();
 	MakeIsolines();
+	MakeForceLines();
 
 	double ItemWidth = Item1->rcItem.right - Item1->rcItem.left,
 		ItemHeight = Item1->rcItem.bottom - Item1->rcItem.top;
@@ -70,6 +72,7 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 	Pen pen(Color::BlueViolet, 0.006);
 	Pen pen3(Color::BlueViolet, 0.002);
 	Pen pen4(Color::White, 0.002);
+	Pen pen5(Color::Orange, 0.002);
 	Pen pen2(Color::Green, 0.006);
 
 	Pen StickPen(Color::CornflowerBlue, 0.02);
@@ -177,6 +180,17 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 		for (int j = 0; j < Isolines[i].size(); j++)
 			gr.DrawLine(&pen4, Isolines[i][j].first, Isolines[i][j].second);
 
+	//отрисовка силовых линий
+	int count = 0;
+	for (int i = 0; i < 10000; i++) {
+		int size = QuantTraces[i].size();
+		//for (int j = 0; j < QuantCount; j++) {
+			for (int k = 0; k < size; k++) {
+				gr.DrawLine(&pen5, QuantTraces[i][k].first, QuantTraces[i][k].second);
+			}
+			count++;
+		//}			
+	}
 
 	Graphics grnew(Item1->hDC);
 	grnew.DrawImage(&Image, 0, 0);
@@ -185,10 +199,14 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 //подготавливает данные для отрисовки 2d
 void Controller::PrepareData2d() {
 	MaxF = 0;
+	int size = 0;
+
 	if (!poligReady) {
 		Poligon* f;
+		MapOfPoligon = new int[(N - 1) * (M - 1)];
+		
 		for (int i = 0; i < N - 1; i++) {
-			for (int j = 0; j < M - 1; j++) {
+			for (int j = 0; j < M - 1; j++) {    
 				vec4
 					p1((float)X[i], (float)Y[j], (float)(F[i][j])),
 					p2((float)X[i + 1], (float)Y[j], (float)(F[i + 1][j])),
@@ -205,16 +223,20 @@ void Controller::PrepareData2d() {
 				if (MaxF < p4.z())
 					MaxF = p4.z();
 
-				
+				//заполняем карту полигонов
+				if (MapOfModel[i][j] == FIELD && MapOfModel[i + 1][j] == FIELD && MapOfModel[i][j + 1] == FIELD && MapOfModel[i + 1][j + 1] == FIELD)
+					MapOfPoligon[size] = FIELD;
+				else
+					MapOfPoligon[size] = OTHER;				
 
 				f = new Poligon{ p1, p2,p3,p4 };
 				polig.push_back(f);
+				size++;
 			}
 		}
 		poligReady = true;
 	}
-	else {
-		int size = 0;
+	else {		
 		for (int i = 0; i < N - 1; i++) {
 			for (int j = 0; j < M - 1; j++) {
 				polig[size]->p1.Setz((float)(F[i][j]));
@@ -323,6 +345,215 @@ bool Controller::CheckPoligon(double T, pair<PointF, PointF>& buf, Poligon pol) 
 	return res;
 }
 
+//находит силовые силии
+void Controller::MakeForceLines() {
+	double Step = abs(X[1] - X[0]);
+	double masx[4] = { X[2], X[M], X[M - 3], X[N - 3] };
+	double masy[4] = { Y[2], Y[M - 3], Y[2], Y[2] };
+	double x, y;
+
+	int count = 0;
+	//for (int i = 0; i < 4; i++) {
+	//	for (int j = 0; j < QuantCount; j++) {
+	//		QuantTraces[count].clear();
+	//		
+	//		if (i == 0) {	//Нижняя и верхняя стенки
+	//			x = masx[i] + j * Step;
+	//			y = masy[i];				
+	//		}
+	//		else if (i == 1) {
+	//			x = masx[i];
+	//			y = masy[i] - j * Step;
+	//		}
+	//		else if (i == 2) {
+	//			x = masx[i];
+	//			y = masy[i] + j * Step;
+	//		}
+
+	//		else {			//Правая и левая стенки
+	//			x = masx[i];
+	//			y = masy[i] - j * Step;
+	//		}
+	//		StartQuantum(x, y, count);
+	//		count++;
+	//	}
+	//}
+	for (int i = 2; i < N - 2; i++) {
+		for (int j = 2; j < M - 2; j++){
+			QuantTraces[count].clear();
+
+			x = X[i];
+			y = Y[j];
+
+			StartQuantum(x, y, count);
+			count++;
+		}
+	}
+	
+}
+
+//запускает пробную частицу
+void Controller::StartQuantum(double x, double y, int count) {
+	//находим полигон, в котором точка находится изначально
+	int curPolig = FindStartPoligon(x, y);
+
+	if (curPolig == -1)
+		return;
+
+	//если попали на границу или обкладку
+	if (MapOfPoligon[curPolig] == OTHER)
+		return;
+	
+	//ходим по этому полигону и получаем точку выхода из него
+	PointF p = MovePoligon(curPolig, count, x, y);
+
+	curPolig = FindStartPoligon(p.X, p.Y);
+	if (curPolig == -1)
+		return;
+
+	//ходим по полигонам, пока не попадем на границу или обкладку
+	while (MapOfPoligon[curPolig] == FIELD) {
+		//ходим по этому полигону и получаем точку выхода из него
+		p = MovePoligon(curPolig, count, p.X, p.Y);
+		curPolig = FindStartPoligon(p.X, p.Y);
+		if (curPolig == -1)
+			return;
+	}
+}
+
+//движение частицы по полигону
+PointF Controller::MovePoligon(int countPolig, int countTrace, double x, double y) {
+	PointF
+		p1(x, y),
+		p2;
+	//делим на два треугольника
+	Triangle t1(polig[countPolig]->p1, polig[countPolig]->p2, polig[countPolig]->p4, 0), t2(polig[countPolig]->p2, polig[countPolig]->p3, polig[countPolig]->p4, 1), curt;
+
+	//находим, в каком частица
+	if (t1.Check(p1.X, p1.Y))
+		curt = t1;
+	else
+		curt = t2;
+
+	//двигаемся по градиенту, пока не выйдем за границы трегольника
+	p2.X = p1.X;
+	p2.Y = p1.Y;
+
+	MoveTriangle(curt, p2);
+
+	QuantTraces[countTrace].push_back({ p1,p2 });	//загоняем две точки в траеткорию
+
+	p1.X = p2.X;
+	p1.Y = p2.Y;
+
+	while (t1.Check(p1.X, p1.Y) || t2.Check(p1.X, p1.Y)) {
+		if (t1.Check(p1.X, p1.Y)) {
+			curt = t1;
+			MoveTriangle(curt, p2);
+
+			QuantTraces[countTrace].push_back({ p1,p2 });	//загоняем две точки в траеткорию
+		}
+		else if (t2.Check(p1.X, p1.Y)) {
+			curt = t2;
+			MoveTriangle(curt, p2);
+
+			QuantTraces[countTrace].push_back({ p1,p2 });	//загоняем две точки в траеткорию
+		}
+
+		p1.X = p2.X;
+		p1.Y = p2.Y;
+	}
+
+	////проверяем, не ушла ти точка в соседний треугольник
+	//if (t1.Check(p1.X, p1.Y))
+	//	MessageBox(NULL, L"Рекурсия! Частица в том же треугольнике", L"", NULL);
+	//else if (t2.Check(p1.X, p1.Y)) {
+	//	curt = t2;
+	//	MoveTriangle(curt, p2);
+
+	//	QuantTraces[countTrace].push_back({ p1,p2 });	//загоняем две точки в траеткорию
+	//}
+	
+	return p2;
+}
+
+//движение частицы по треугольнику
+void Controller::MoveTriangle(Triangle t, PointF& p) {
+	PointF grad = t.GetGradient();	//нужно реализовать
+	double step = sqrt((abs(polig[0]->p1.x() - polig[0]->p1.x()) + abs(polig[0]->p1.y() - polig[0]->p4.y()))) / 20;
+
+	while (t.Check(p.X, p.Y)) {
+		p.X += grad.X * step;
+		p.Y += grad.Y * step;
+	}
+}
+
+//находит полигон в начальный момент времени
+int Controller::FindStartPoligon(double x, double y) {
+	/*Triangle t1, t2;*/
+	for (int i = 0; i < polig.size(); i++) {
+		////разбили треугольник на прямоугольники
+		//t1.mas[0] = polig[i]->p1;
+		//t1.mas[1] = polig[i]->p2;
+		//t1.mas[2] = polig[i]->p3;
+
+		//t2.mas[0] = polig[i]->p2;
+		//t2.mas[1] = polig[i]->p3;
+		//t2.mas[2] = polig[i]->p4;
+
+		////проверяем, есть ли в треугольниках частица
+		//if (t1.Check(x, y))
+		//	return i;
+		//else if (t2.Check(x, y))
+		//	return i;
+		if (x >= polig[i]->p1.x() && x <= polig[i]->p2.x() && y >= polig[i]->p1.y() && y <= polig[i]->p4.y())
+			return i;
+	}
+
+	return -1;
+}
+
+//находит рядом стоящий полигон
+int Controller::FindNearPoligon(int cur, double x, double y) {
+	//смотрим размерность матрицы полигонов
+	int rate = M - 1;
+	//while (!(polig.size() % (rate * rate)))
+		//rate++;
+
+	int curi = 0, curj = 0;
+	//находим положение нашего полигона
+	for (int i = 0; i < rate; i++)
+		for (int j = 0; j < rate; j++)
+			if (cur == i * rate + j)
+				curi = i, curj = j;
+
+	pair<int, int> poligIds[8] = {
+		{curi - 1, curj - 1}, {curi - 1, curj}, {curi - 1, curj + 1}, {curi, curj + 1},
+		{curi, curj - 1}, {curi + 1, curj - 1}, {curi + 1, curj}, {curi + 1, curj + 1}
+	};
+
+	Triangle t1, t2;
+	//проверяем эти 8 полигонов
+	for (int i = 0; i < 8; i++) {
+		//разбили треугольник на прямоугольники
+		t1.mas[0] = polig[poligIds[i].first * rate + poligIds[i].second]->p1;
+		t1.mas[1] = polig[poligIds[i].first * rate + poligIds[i].second]->p2;
+		t1.mas[2] = polig[poligIds[i].first * rate + poligIds[i].second]->p3;
+
+		t2.mas[0] = polig[poligIds[i].first * rate + poligIds[i].second]->p2;
+		t2.mas[1] = polig[poligIds[i].first * rate + poligIds[i].second]->p3;
+		t2.mas[2] = polig[poligIds[i].first * rate + poligIds[i].second]->p4;
+
+		//проверяем, есть ли в треугольниках частица
+		if (t1.Check(x, y))
+			return poligIds[i].first * rate + poligIds[i].second;
+		else if (t2.Check(x, y))
+			return poligIds[i].first * rate + poligIds[i].second;
+	}
+
+
+	return -1;
+}
 
 //очищает данные
 void Controller::Clear() {
@@ -333,9 +564,17 @@ void Controller::Clear() {
 		X = nullptr;
 		Y = nullptr;
 		F = nullptr;
+
+		MapOfModel = nullptr;
+		
+		delete[] MapOfPoligon;
+
+		MapOfPoligon = nullptr;
 		poligReady = false;
+
 		polig.clear();
 		mod->Reset();
+
 		delete mod;
 		mod = nullptr;
 	}	
