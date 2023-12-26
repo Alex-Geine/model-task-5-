@@ -49,4 +49,6 @@ public:
 	double R;		//граница области
 	double err;		//допустимая ошибка
 	double U0;		//напряжение на обкладках
+	double tetta;
+	afx_msg void OnEnChangeEdit7();
 };

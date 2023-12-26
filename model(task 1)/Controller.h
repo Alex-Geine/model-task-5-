@@ -3,7 +3,8 @@
 #include <gdiplus.h>
 #include <vector>
 #include "WaveModel.h"
-#include "math3d.h"
+
+//#include "Triangle.h"
 
 using namespace std;
 using namespace Gdiplus;
@@ -30,13 +31,36 @@ private:
 	WaveModel* mod = nullptr;
 	HANDLE TREAD;
 
-	struct Triangle {		
+	double	R;					//ширина ямы
+	int N;						//количество точек по X
+	int M;						//количество точек по Y
+	int QuantCount = 100;		//количество пробных частиц, запускаемых с одной стороны
+
+	double MaxF;				//максимальное значение на графике 	
+	double MinF;				//минимальное значение на графике
+
+	double** F = NULL;			//массив значений распределения потенциалов
+	double* X = NULL;			//вектор значений по X
+	double* Y = NULL;			//вектор значений по Y
+	int** MapOfModel = NULL;	//массив с классификацией узлов на поле
+	int* MapOfPoligon = NULL;	//массив с классификацией полигонов на поле
+
+	vector<Poligon*> polig;		//вектор со всеми полигонами				
+
+	vector <pair<PointF, PointF>> Isolines[11];					//массив с изолиниями
+	vector <pair<PointF, PointF>> QuantTraces[10000];		//траектории движения пробных частиц
+
+	//флаг, отвечающий за создание вектора с полигонами
+	bool poligReady = false;
+
+	struct Triangle {
+	public:
 		vec4 mas[3];
 		int type;		//отвечает за расположение треугольника в пространстве
 
 		vec4 a, b;		//координаты вектора
 
-		Triangle(vec4 a, vec4 b, vec4 c, int type):type(type) {
+		Triangle(vec4 a, vec4 b, vec4 c, int type) :type(type) {
 			mas[0] = a, mas[1] = b, mas[2] = c;
 
 			//задаем координаты направляющей пары правой тройки векторов
@@ -60,13 +84,19 @@ private:
 			}
 		}
 
+		//конструктор, принимающий координаты в думере
+		Triangle(double ax, double ay, double bx, double by, double cx, double cy) {
+			vec4 a(ax, ay, 0), b(bx, by, 0), c(cx, cy, 0);
+			mas[0] = a, mas[1] = b, mas[2] = c;
+		}
+
 		Triangle() {}
 
 		//функция проыеряет, лежит ли точка в треугольнике
 		bool Check(double x, double y) {
-				//(x1 - x0)* (y2 - y1) - (x2 - x1) * (y1 - y0)
-				//(x2 - x0) * (y3 - y2) - (x3 - x2) * (y2 - y0)
-				//(x3 - x0) * (y1 - y3) - (x1 - x3) * (y3 - y0)
+			//(x1 - x0)* (y2 - y1) - (x2 - x1) * (y1 - y0)
+			//(x2 - x0) * (y3 - y2) - (x3 - x2) * (y2 - y0)
+			//(x3 - x0) * (y1 - y3) - (x1 - x3) * (y3 - y0)
 			double a = (mas[0].x() - x) * (mas[1].y() - mas[0].y()) - (mas[1].x() - mas[0].x()) * (mas[0].y() - y);
 			double b = (mas[1].x() - x) * (mas[2].y() - mas[1].y()) - (mas[2].x() - mas[1].x()) * (mas[1].y() - y);
 			double c = (mas[2].x() - x) * (mas[0].y() - mas[2].y()) - (mas[0].x() - mas[2].x()) * (mas[2].y() - y);
@@ -82,21 +112,20 @@ private:
 			double x = a.y() * b.z() - a.z() * b.y();
 			double y = -a.x() * b.z() - a.z() * b.x();
 			PointF p;
-			
+
 			if (type == 1) {
 				p.X = -x / sqrt(x * x + y * y),
-				p.Y = -y / sqrt(x * x + y * y);
+					p.Y = -y / sqrt(x * x + y * y);
 			}
-				
+
 			else {
 				p.X = -x / sqrt(x * x + y * y),
-				p.Y = -y / sqrt(x * x + y * y);
-			}				
-			
+					p.Y = -y / sqrt(x * x + y * y);
+			}
+
 			return p;
 		}
 	};
-
 	struct ColorTable {
 	public:
 		//массив кисточек
@@ -124,38 +153,19 @@ private:
 		}
 
 		//возвращает указатель на кисть из нужного диапазона
-		SolidBrush* GetBrush(double val) {
-			for (int i = 0; i < Size - 1; i++) {
-				if ((val >= mas[i]) && (val <= mas[i + 1]))
-					return brashes[i];				
-			}
-			return new SolidBrush(Color::Black);
+		SolidBrush* GetBrush(int type) {
+			if (type == LFACING)
+				return brashes[0];
+			else if (type == RFACING)
+				return brashes[Size - 2];
+			else
+				return new SolidBrush(Color::Black);
 		}
 	};
 
 	
 
-	double	R;					//ширина ямы
-	int N;						//количество точек по X
-	int M;						//количество точек по Y
-	int QuantCount = 100;		//количество пробных частиц, запускаемых с одной стороны
-
-	double MaxF;				//максимальное значение на графике 	
-	double MinF;				//минимальное значение на графике
-
-	double** F = NULL;			//массив значений распределения потенциалов
-	double* X = NULL;			//вектор значений по X
-	double* Y = NULL;			//вектор значений по Y
-	int** MapOfModel = NULL;	//массив с классификацией узлов на поле
-	int* MapOfPoligon = NULL;	//массив с классификацией полигонов на поле
-		
-	vector<Poligon*> polig;		//вектор со всеми полигонами				
-
-	vector <pair<PointF, PointF>> Isolines[11];					//массив с изолиниями
-	vector <pair<PointF, PointF>> QuantTraces[10000];		//траектории движения пробных частиц
-
-	//флаг, отвечающий за создание вектора с полигонами
-	bool poligReady = false;
+	
 
 	//подготавливает данные для отрисовки 2d
 	void PrepareData2d();	
@@ -201,7 +211,8 @@ public:
 		double width,		//ширина обкладок
 		double phi0,		//потенциал на обкладках		
 		double R,			//размер поля для моделирования
-		double err			//допустимая погрешность
+		double err,			//допустимая погрешность
+		double tetta		//угол поворота обкладки
 	);
 		
 	//очищает данные
@@ -229,6 +240,15 @@ public:
 	//получает значение ошибки из модли
 	double GetError() {
 		return mod->curE;
+	}
+
+	//проверяет, отработала ли модель
+	bool CheckTread() {
+		if (WaitForSingleObject(TREAD, 10) == WAIT_OBJECT_0)
+			return 1;
+		else
+			return 0;
+
 	}
 
 	//создает новую модель

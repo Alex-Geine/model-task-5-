@@ -57,12 +57,13 @@ Cmodeltask1Dlg::Cmodeltask1Dlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MODELTASK_1_DIALOG, pParent)
 	, M(100)
 	, n(100)
-	, D(1)
-	, width(0.5)
+	, D(1.5)
+	, width(1)
 	, height(1)
 	, R(2)
 	, err(0.01)
-	, U0(2)
+	, U0(10)
+	, tetta(0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -80,6 +81,7 @@ void Cmodeltask1Dlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT5, R);
 	DDX_Text(pDX, IDC_EDIT6, U0);
 	DDX_Text(pDX, IDC_EDIT7, err);
+	DDX_Text(pDX, IDC_EDIT8, tetta);
 }
 
 BEGIN_MESSAGE_MAP(Cmodeltask1Dlg, CDialogEx)
@@ -88,6 +90,7 @@ BEGIN_MESSAGE_MAP(Cmodeltask1Dlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_WM_TIMER()
 	ON_BN_CLICKED(IDC_BUTTON4, &Cmodeltask1Dlg::OnBnClickedButton4)	
+	ON_EN_CHANGE(IDC_EDIT7, &Cmodeltask1Dlg::OnEnChangeEdit7)
 END_MESSAGE_MAP()
 
 
@@ -184,18 +187,20 @@ HCURSOR Cmodeltask1Dlg::OnQueryDragIcon()
 
 void Cmodeltask1Dlg::OnTimer(UINT_PTR nIDEvent)
 {	
-	//control->StartSolve();
-	control->GetData();
-	MainGraph.draw = 1;
-	MainGraph.Invalidate(false);	
+	if (control->CheckTread()) {
+		//control->StartSolve();
+		control->GetData();
+		MainGraph.draw = 1;
+		MainGraph.Invalidate(false);
 
-	while (PeekMessage(&msg, 0, WM_PAINT, WM_PAINT, PM_REMOVE))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}		
-
-	CDialogEx::OnTimer(nIDEvent);
+		while (PeekMessage(&msg, 0, WM_PAINT, WM_PAINT, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		KillTimer(timer);
+		CDialogEx::OnTimer(nIDEvent);
+	}	
 }
 
 void CAboutDlg::OnPaint()
@@ -210,9 +215,20 @@ void Cmodeltask1Dlg::OnBnClickedButton4()
 		
 	control->Clear();
 	control->InitModel();
-	control->UpdateModel(n, M, D, height, width, U0, R, err);
+	control->UpdateModel(n, M, D, height, width, U0, R, err, tetta);
 	control->StartSolve();
 
 	timer = SetTimer(1, 10, 0);
 }
 
+
+
+void Cmodeltask1Dlg::OnEnChangeEdit7()
+{
+	// TODO:  Если это элемент управления RICHEDIT, то элемент управления не будет
+	// send this notification unless you override the CDialogEx::OnInitDialog()
+	// функция и вызов CRichEditCtrl().SetEventMask()
+	// with the ENM_CHANGE flag ORed into the mask.
+
+	// TODO:  Добавьте код элемента управления
+}
