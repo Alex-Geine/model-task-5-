@@ -25,8 +25,9 @@ void Controller::GetData() {
 //запусткает вычисления
 void Controller::StartSolve() {
 	TREAD = CreateThread(NULL, NULL, StaticModelFunk, (void*)this, 0, NULL);
-	MessageBoxW(NULL, L"START!", L"START!", NULL);
+	//MessageBoxW(NULL, L"START!", L"START!", NULL);
 	//mod->Start();
+
 }
 
 //запускает отрисовку 2d графика
@@ -48,8 +49,8 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 		steplenY = (top - bottom) / 10,
 		steplenX = (right - left) / 10;
 
-	double xScale = ItemWidth / (right + right / 15 - left);
-	double yScale = -ItemHeight / (top + top / 5 - bottom);
+	double xScale = ItemWidth / (right  - left);
+	double yScale = -ItemHeight / (top  - bottom);
 
 
 
@@ -71,9 +72,9 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 	Pen BackGroundPen(Color::DarkGray, 0.005);
 	Pen pen(Color::BlueViolet, 0.006);
 	Pen pen3(Color::BlueViolet, 0.002);
-	Pen pen4(Color::White, 0.002);
-	Pen pen5(Color::Orange, 0.002);
-	Pen pen2(Color::Green, 0.006);
+	Pen pen4(Color::DarkGoldenrod, 0.006);
+	Pen pen5(Color::FloralWhite, 0.002);
+	Pen pen2(Color::AliceBlue, 0.006);
 
 	Pen StickPen(Color::CornflowerBlue, 0.02);
 	SolidBrush brush(Color::Black);
@@ -81,52 +82,52 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 	Gdiplus::Font font((L"Times New Roman"), 14, FontStyle::FontStyleRegular, UnitPixel);
 
 
-	//Ðàçìåòêà
-	for (int i = 0; i < 10; i++)
-	{
-		//ãîðèçîíòàëüíàÿ
-		gr.DrawLine(&BackGroundPen, PointF(-right / 2, top / 2 - i * steplenY), PointF(right / 2, top / 2 - i * steplenY));
+	////Ðàçìåòêà
+	//for (int i = 0; i < 10; i++)
+	//{
+	//	//ãîðèçîíòàëüíàÿ
+	//	gr.DrawLine(&BackGroundPen, PointF(-right / 2, top / 2 - i * steplenY), PointF(right / 2, top / 2 - i * steplenY));
 
-		//âåðòèêàëüíàÿ
-		gr.DrawLine(&BackGroundPen, PointF(-right / 2 + i * steplenX, top / 2), PointF(-right / 2 + i * steplenX, -top / 2));
-	}
+	//	//âåðòèêàëüíàÿ
+	//	gr.DrawLine(&BackGroundPen, PointF(-right / 2 + i * steplenX, top / 2), PointF(-right / 2 + i * steplenX, -top / 2));
+	//}
 
 	//Áîëüøèå îñè
-	//ãîðèçîíòàëüíàÿ
-	gr.DrawLine(&pen, PointF(-right / 2, -top / 2), PointF(right / 2, -top / 2));
+	////ãîðèçîíòàëüíàÿ
+	//gr.DrawLine(&pen, PointF(-right / 2, -top / 2), PointF(right / 2, -top / 2));
 
-	//âåðòèêàëüíàÿ
-	gr.DrawLine(&pen, PointF(right / 2, top / 2), PointF(right / 2, -top / 2));
+	////âåðòèêàëüíàÿ
+	//gr.DrawLine(&pen, PointF(right / 2, top / 2), PointF(right / 2, -top / 2));
 
 	gr.ResetTransform();
 
 	ColorTable ct(MaxF);
 
-	//ïîäïèñè ê îñÿì
-	for (int i = 0; i < 11; i++)
-	{
-		CString str;
+	////ïîäïèñè ê îñÿì
+	//for (int i = 0; i < 11; i++)
+	//{
+	//	CString str;
 
-		//ïî Y
-		str.Format(L"%.2f", top / 2 - i * steplenY);
-		PointF strPoint(right / 2, top / 2 - i * steplenY);
-		matr.TransformPoints(&strPoint);
-		gr.DrawString(str, str.GetLength() + 1, &font, strPoint, &brush);
+	//	//ïî Y
+	//	str.Format(L"%.2f", top / 2 - i * steplenY);
+	//	PointF strPoint(right / 2, top / 2 - i * steplenY);
+	//	matr.TransformPoints(&strPoint);
+	//	gr.DrawString(str, str.GetLength() + 1, &font, strPoint, &brush);
 
-		//ïî X
-		str.Format(L"%.2f", right / 2 - i * steplenX);
-		strPoint.X = right / 2 - i * steplenX;
-		strPoint.Y = -top / 2;
-		matr.TransformPoints(&strPoint);
-		gr.DrawString(str, str.GetLength() + 1, &font, strPoint, &brush);
+	//	//ïî X
+	//	str.Format(L"%.2f", right / 2 - i * steplenX);
+	//	strPoint.X = right / 2 - i * steplenX;
+	//	strPoint.Y = -top / 2;
+	//	matr.TransformPoints(&strPoint);
+	//	gr.DrawString(str, str.GetLength() + 1, &font, strPoint, &brush);
 
-		//äëÿ ïàëèòðû
-		str.Format(L"%.2f", ct.mas[i]);
-		strPoint.X = -right / 2 + i * steplenX;
-		strPoint.Y = -(top) / 2 - steplenY / 1.7;
-		matr.TransformPoints(&strPoint);
-		gr.DrawString(str, str.GetLength() + 1, &font, strPoint, &brush);
-	}
+	//	////äëÿ ïàëèòðû
+	//	//str.Format(L"%.2f", ct.mas[i]);
+	//	//strPoint.X = -right / 2 + i * steplenX;
+	//	//strPoint.Y = -(top) / 2 - steplenY / 1.7;
+	//	//matr.TransformPoints(&strPoint);
+	//	//gr.DrawString(str, str.GetLength() + 1, &font, strPoint, &brush);
+	//}
 
 	gr.SetTransform(&matr);
 
@@ -138,17 +139,17 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 
 
 
-	double
+	/*double
 		leftkv = -right / 2,
 		rightkv = leftkv + steplenX;
 
 	double
 		ykv1 = -(top + top / 5) / 2 - steplenY,
-		ykv2 = ykv1 + steplenY;
+		ykv2 = ykv1 + steplenY;*/
 
 	//îòðèñîâêà öâåòîâîé ïàëèòðû
 	PointF* p = new PointF[4];
-	for (int i = 0; i < ct.Size - 1; i++) {
+	/*for (int i = 0; i < ct.Size - 1; i++) {
 		p[0] = PointF(leftkv, ykv1);
 		p[1] = PointF(rightkv, ykv1);
 		p[2] = PointF(rightkv, ykv2);
@@ -159,20 +160,35 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 
 		leftkv += steplenX;
 		rightkv += steplenX;
-	}
+	}*/
 
 
 	//îòðèñîâêà ïàêåòà	
 	for (int i = 0; i < polig.size(); i++) {
-		double sum = (polig[i]->p1.z() + polig[i]->p2.z() + polig[i]->p3.z() + polig[i]->p4.z()) / 4;
+		//double sum = (polig[i]->p1.z() + polig[i]->p2.z() + polig[i]->p3.z() + polig[i]->p4.z()) / 4;
 		p[0] = PointF(polig[i]->p1.x(), polig[i]->p1.y());//(y1, Func(x1, y1));
 		p[1] = PointF(polig[i]->p2.x(), polig[i]->p2.y());//(y2, Func(x2, y2));
 		p[2] = PointF(polig[i]->p3.x(), polig[i]->p3.y());//(y3, Func(x3, y3));//
 		p[3] = PointF(polig[i]->p4.x(), polig[i]->p4.y());//(y4, Func(x4, y4));//
 
+		int type;
+		
+
 		//	if (background)
-		gr.FillPolygon(ct.GetBrush(sum), p, 4);
+		gr.FillPolygon(ct.GetBrush(MapOfPoligon[i]), p, 4);
 		//gr.DrawPolygon(&pen3, p, 4);
+	}
+
+	//отрисовка силовых линий
+	int count = 0;
+	for (int i = 0; i < 10000; i++) {
+		int size = QuantTraces[i].size();
+		//for (int j = 0; j < QuantCount; j++) {
+		for (int k = 0; k < size; k++) {
+			gr.DrawLine(&pen5, QuantTraces[i][k].first, QuantTraces[i][k].second);
+		}
+		count++;
+		//}			
 	}
 
 	//îòðèñîâêà èçîëèíèé
@@ -180,17 +196,7 @@ void Controller::DrawMainGr(LPDRAWITEMSTRUCT Item1) {
 		for (int j = 0; j < Isolines[i].size(); j++)
 			gr.DrawLine(&pen4, Isolines[i][j].first, Isolines[i][j].second);
 
-	//отрисовка силовых линий
-	int count = 0;
-	for (int i = 0; i < 10000; i++) {
-		int size = QuantTraces[i].size();
-		//for (int j = 0; j < QuantCount; j++) {
-			for (int k = 0; k < size; k++) {
-				gr.DrawLine(&pen5, QuantTraces[i][k].first, QuantTraces[i][k].second);
-			}
-			count++;
-		//}			
-	}
+	
 
 	Graphics grnew(Item1->hDC);
 	grnew.DrawImage(&Image, 0, 0);
@@ -226,6 +232,10 @@ void Controller::PrepareData2d() {
 				//заполняем карту полигонов
 				if (MapOfModel[i][j] == FIELD && MapOfModel[i + 1][j] == FIELD && MapOfModel[i][j + 1] == FIELD && MapOfModel[i + 1][j + 1] == FIELD)
 					MapOfPoligon[size] = FIELD;
+				else if (MapOfModel[i][j] == LFACING || MapOfModel[i + 1][j] == LFACING || MapOfModel[i][j + 1] == LFACING || MapOfModel[i + 1][j + 1] == LFACING)
+					MapOfPoligon[size] = LFACING;
+				else if (MapOfModel[i][j] == RFACING || MapOfModel[i + 1][j] == RFACING || MapOfModel[i][j + 1] == RFACING || MapOfModel[i + 1][j + 1] == RFACING)
+					MapOfPoligon[size] = RFACING;
 				else
 					MapOfPoligon[size] = OTHER;				
 
@@ -401,7 +411,7 @@ void Controller::StartQuantum(double x, double y, int count) {
 		return;
 
 	//если попали на границу или обкладку
-	if (MapOfPoligon[curPolig] == OTHER)
+	if (MapOfPoligon[curPolig] != FIELD)
 		return;
 	
 	//ходим по этому полигону и получаем точку выхода из него
@@ -588,10 +598,11 @@ void Controller::UpdateModel(
 	double width,		//ширина обкладок
 	double phi0,		//потенциал на обкладках		
 	double R,			//размер поля для моделирования
-	double err			//допустимая погрешность
+	double err,			//допустимая погрешность
+	double tetta		//угол поворота обкладки
 	) 
 {
-	mod->Update(N, M, D, height, width, phi0, R, err);
+	mod->Update(N, M, D, height, width, phi0, R, err, tetta);
 	mod->InitData();
 	this->R = R;
 	this->N = N;
